@@ -1,0 +1,52 @@
+name: Build & Release APK
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept SDK licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK for release
+        run: cp app/build/outputs/apk/debug/app-debug.apk PocketPath.apk
+
+      - name: Publish latest release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: PocketPath (latest build)
+          make_latest: true
+          body: |
+            Automatically built from commit ${{ github.sha }} on `master`.
+
+            Scan the QR code in the README, or download `PocketPath.apk` below and install it
+            (you'll need to allow "install unknown apps" for your browser/file manager).
+
+            This is a debug build for direct install/testing, not a Play Store release.
+          files: PocketPath.apk
